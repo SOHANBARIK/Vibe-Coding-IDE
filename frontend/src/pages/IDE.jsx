@@ -11,15 +11,15 @@ const API_JAVA_BASH = import.meta.env.API_JAVA_BASH;
 const API_GENERAL = import.meta.env.API_GENERAL;
 
 export default function IDE() {
-  const [code, setCode] = useState(`print("Hello World")`);
+  const [code, setCode] = useState(`public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello Java");\n    }\n}`);
   const [output, setOutput] = useState("> Ready to compile...");
-  const [language, setLanguage] = useState("python");
+  const [language, setLanguage] = useState("java"); // Default to Java as per your screenshot
   const [prompt, setPrompt] = useState("");
   
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
 
-  // Helper function to get the correct API URL based on language
+  // Helper: Select the correct backend based on language
   const getApiEndpoint = () => {
     if (language === "java" || language === "bash") {
       return API_JAVA_BASH;
@@ -35,7 +35,7 @@ export default function IDE() {
       cpp: '#include <iostream>\n\nint main() {\n    std::cout << "Hello C++";\n    return 0;\n}',
       c: '#include <stdio.h>\n\nint main() {\n    printf("Hello C\\n");\n    return 0;\n}',
       java: 'public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello Java");\n    }\n}',
-      bash: 'echo "Hello Bash"'
+      bash: 'echo "Hello Bash"' 
     };
     
     // Only set code if a boilerplate exists for the selected language
@@ -48,10 +48,10 @@ export default function IDE() {
   const handleGenerate = async () => {
     if (!prompt) return;
     setIsGenerating(true);
-    setOutput(`> Initializing Vibe Agent for ${language}...`);
+    const activeApi = getApiEndpoint(); 
     
-    const activeApi = getApiEndpoint(); // Select the correct server
-
+    setOutput(`> Initializing Vibe Agent for ${language} on ${activeApi}...`);
+    
     try {
       const res = await axios.post(`${activeApi}/generate`, {
         prompt: prompt,
@@ -72,10 +72,9 @@ export default function IDE() {
   // 2. Manual Run Handler
   const handleRun = async () => {
     setIsRunning(true);
-    setOutput(`> Compiling ${language}...`);
-    
-    const activeApi = getApiEndpoint(); // Select the correct server
+    const activeApi = getApiEndpoint();
 
+    setOutput(`> Compiling ${language} on ${activeApi}...`);
     try {
       const res = await axios.post(`${activeApi}/execute`, {
         code: code,
