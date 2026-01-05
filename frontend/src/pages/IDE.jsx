@@ -99,7 +99,7 @@ export default function IDE() {
             <option value="javascript">JavaScript (Node)</option>
             <option value="cpp">C++ (GCC)</option>
             <option value="c">C (GCC)</option>
-            <option value="bash">Bash</option>
+            {/* <option value="bash">Bash</option> */}
           </select>
         </div>
 
