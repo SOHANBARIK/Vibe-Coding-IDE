@@ -71,7 +71,7 @@ export default function IDE() {
     setIsRunning(true);
     
     const activeApi = getApiEndpoint(); 
-    setOutput(`> Connecting to ${activeApi}...\n> Compiling ${language}...`);
+    setOutput(`> Connecting to Api...\n> Compiling ${language}...`);
 
     try {
       const res = await axios.post(`${activeApi}/execute`, {
