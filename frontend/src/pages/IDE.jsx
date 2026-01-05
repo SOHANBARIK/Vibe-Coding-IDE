@@ -68,7 +68,7 @@ export default function IDE() {
                 </div>
 
                 <span className="text-transparent bg-clip-text bg-gradient-to-r ...">
-                  Vibe Coder
+                  Polyglot IDE
                 </span>
           </div>
           
@@ -152,7 +152,7 @@ export default function IDE() {
             ) : (
               <>
                 <Sparkles size={18} /> 
-                Polyglot
+                Vibe Code
               </>
             )}
           </button>
