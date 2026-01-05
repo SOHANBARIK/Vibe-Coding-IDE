@@ -1,0 +1,26 @@
+# Force standard Intel/AMD architecture
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# 1. Update & Install Python + C++ (Lightweight)
+RUN apt-get update && apt-get install -y \
+    python3 \
+    g++ \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# 2. Install Node.js & NPM (Medium)
+RUN apt-get update && apt-get install -y \
+    nodejs \
+    npm \
+    && rm -rf /var/lib/apt/lists/*
+
+# 3. Install Java (Heavy - doing this separately prevents crashes)
+RUN apt-get update && apt-get install -y \
+    default-jdk \
+    && rm -rf /var/lib/apt/lists/*
+
+# 4. Setup
+RUN ln -s /usr/bin/python3 /usr/bin/python
+WORKDIR /sandbox
