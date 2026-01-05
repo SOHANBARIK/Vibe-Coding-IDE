@@ -4,13 +4,9 @@ FROM python:3.11-slim
 # 2. Set working directory
 WORKDIR /app
 
-# 3. INSTALL COMPILERS (The Critical Step)
-# We add gcc, g++, and nodejs so the server can compile code locally
+# 3. Install Java (Heavy)(300MB+)
 RUN apt-get update && apt-get install -y \
-    gcc \
-    g++ \
-    nodejs \
-    npm \
+    default-jdk \
     && rm -rf /var/lib/apt/lists/*
 
 # 4. Copy requirements and install Python dependencies

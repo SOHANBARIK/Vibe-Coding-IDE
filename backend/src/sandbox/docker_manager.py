@@ -7,10 +7,7 @@ def execute_in_sandbox(code: str, language: str = "python") -> str:
     
     # Define how to run each language
     commands = {
-        "python":     ["python", "-c", code],
-        "javascript": ["node", "-e", code],
         "bash":       ["bash", "-c", code],
-        "cpp":        ["sh", "-c", f"echo '{code}' > main.cpp && g++ main.cpp -o main && ./main"],
         # JAVA SUPPORT: Write to main.java -> Run it
         "java":       ["sh", "-c", f"echo '{code}' > main.java && java main.java"]
     }

@@ -3,6 +3,7 @@ import uvicorn
 import sys
 import subprocess
 import os
+import re
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -20,7 +21,7 @@ IS_RENDER = os.getenv('RENDER')
 
 class ExecuteRequest(BaseModel):
     code: str
-    language: str = "python"
+    language: str 
 
 app = FastAPI(title="Vibe Coder API")
 
@@ -33,47 +34,74 @@ app.add_middleware(
 )
 
 def execute_unsafe_local(code: str, language: str):
+    """
+    Executes Java or Bash code locally.
+    WARNING: No sandbox security. 
+    """
     file_id = str(uuid.uuid4())
     output = ""
     command = []
-    
+    files_to_cleanup = []
+
     try:
-        if language == "python":
-            filename = f"{file_id}.py"
-            with open(filename, "w") as f: f.write(code)
-            command = [sys.executable, filename]
-
-        elif language == "javascript":
-            filename = f"{file_id}.js"
-            with open(filename, "w") as f: f.write(code)
-            command = ["node", filename]
-
-        elif language == "cpp":
-            filename = f"{file_id}.cpp"
-            with open(filename, "w") as f: f.write(code)
-            subprocess.run(["g++", filename, "-o", file_id], check=True, capture_output=True, text=True)
-            command = [f"./{file_id}"]
-
-        elif language == "c":
-            filename = f"{file_id}.c"
-            with open(filename, "w") as f: f.write(code)
-            subprocess.run(["gcc", filename, "-o", file_id], check=True, capture_output=True, text=True)
-            command = [f"./{file_id}"]
+        # --- JAVA ---
+        if language == "java":
+            # 1. Extract public class name to name the file correctly
+            match = re.search(r'public\s+class\s+(\w+)', code)
+            if match:
+                class_name = match.group(1)
+            else:
+                # Fallback if no public class found (often "Main" is safe default)
+                class_name = "Main"
+                # If the code doesn't have a class definition, wrap it or warn user.
+                # Assuming valid Java code input here.
             
-        else:
-            return f"Language '{language}' not supported locally."
+            filename_java = f"{class_name}.java"
+            filename_class = f"{class_name}.class"
+            
+            # Write source code
+            with open(filename_java, "w") as f: f.write(code)
+            files_to_cleanup.append(filename_java)
+            files_to_cleanup.append(filename_class)
+            
+            # 2. Compile
+            compile_res = subprocess.run(
+                ["javac", filename_java], 
+                capture_output=True, text=True
+            )
+            
+            if compile_res.returncode != 0:
+                return f"Compilation Error:\n{compile_res.stderr}"
+            
+            # 3. Run
+            command = ["java", class_name]
 
-        result = subprocess.run(command, capture_output=True, text=True, timeout=5)
+        # --- BASH ---
+        elif language == "bash":
+            filename_sh = f"{file_id}.sh"
+            with open(filename_sh, "w") as f: f.write(code)
+            files_to_cleanup.append(filename_sh)
+            command = ["bash", filename_sh]
+
+        else:
+            return f"Language '{language}' not supported. Only Java and Bash are allowed."
+
+        # Execute the command
+        result = subprocess.run(command, capture_output=True, text=True, timeout=10)
         output = result.stdout + result.stderr
 
-    except subprocess.CalledProcessError as e:
-        output = f"Compilation Error:\n{e.stderr}"
+    except subprocess.TimeoutExpired:
+        output = "Error: Execution timed out (Limit: 10s)."
     except Exception as e:
         output = f"Runtime Error: {str(e)}"
     finally:
-        for ext in [".py", ".js", ".cpp", ".c", ""]:
-            path = f"{file_id}{ext}"
-            if os.path.exists(path): os.remove(path)
+        # Clean up files
+        for path in files_to_cleanup:
+            if os.path.exists(path): 
+                try:
+                    os.remove(path)
+                except:
+                    pass
                 
     return output
 
@@ -97,12 +125,8 @@ async def generate_code(payload: CodeRequest):
 @app.post("/execute")
 async def execute_code_endpoint(payload: ExecuteRequest):
     try:
-        # Use local compilers on Render, Docker on Localhost
-        if IS_RENDER:
-            output = execute_unsafe_local(payload.code, payload.language)
-        else:
-            from src.sandbox.docker_manager import execute_in_sandbox
-            output = execute_in_sandbox(payload.code, payload.language)
+        # Always use local execution for this simplified setup
+        output = execute_unsafe_local(payload.code, payload.language)
         return {"output": output, "status": "success"}
     except Exception as e:
         return {"output": str(e), "status": "error"}
