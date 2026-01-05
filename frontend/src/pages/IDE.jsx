@@ -3,28 +3,21 @@ import axios from 'axios';
 import Editor from "@monaco-editor/react";
 import { Play, Loader2, Code2, Terminal as TerminalIcon, Sparkles } from 'lucide-react';
 
-// --- CONFIGURATION ---
-// 1. Server for Java & Bash
-const API_JAVA_BASH = import.meta.env.API_JAVA_BASH;
-
-// 2. Server for Python, C, C++ (and others)
-const API_GENERAL = import.meta.env.API_GENERAL;
-
 export default function IDE() {
   const [code, setCode] = useState(`public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello Java");\n    }\n}`);
   const [output, setOutput] = useState("> Ready to compile...");
-  const [language, setLanguage] = useState("java"); // Default to Java as per your screenshot
+  const [language, setLanguage] = useState("java");
   const [prompt, setPrompt] = useState("");
   
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
 
-  // Helper: Select the correct backend based on language
+  // --- CRITICAL FIX: Defined URLs directly inside the component ---
   const getApiEndpoint = () => {
     if (language === "java" || language === "bash") {
-      return API_JAVA_BASH;
+      return "https://vibe-coding-ide-1.onrender.com"; // Java & Bash Server
     }
-    return API_GENERAL;
+    return "https://vibe-coding-ide.onrender.com"; // Python, C, C++ Server
   };
 
   // Set boilerplate code when language changes
@@ -48,8 +41,9 @@ export default function IDE() {
   const handleGenerate = async () => {
     if (!prompt) return;
     setIsGenerating(true);
-    const activeApi = getApiEndpoint(); 
     
+    // Get the correct URL for the current language
+    const activeApi = getApiEndpoint(); 
     setOutput(`> Initializing Vibe Agent for ${language} on ${activeApi}...`);
     
     try {
@@ -63,7 +57,7 @@ export default function IDE() {
       setOutput(res.data.status === "success" ? res.data.output : `ERROR:\n${res.data.output}`);
     } catch (err) {
       console.error("API Error:", err);
-      setOutput(`Error connecting to ${activeApi}\n${err.message}`);
+      setOutput(`Error connecting to server.\nPossible causes:\n1. Server is waking up (wait 50s)\n2. URL is wrong\n\nDetails: ${err.message}`);
     } finally {
       setIsGenerating(false);
     }
@@ -72,9 +66,10 @@ export default function IDE() {
   // 2. Manual Run Handler
   const handleRun = async () => {
     setIsRunning(true);
-    const activeApi = getApiEndpoint();
+    
+    const activeApi = getApiEndpoint(); 
+    setOutput(`> Connecting to ${activeApi}...\n> Compiling ${language}...`);
 
-    setOutput(`> Compiling ${language} on ${activeApi}...`);
     try {
       const res = await axios.post(`${activeApi}/execute`, {
         code: code,
@@ -83,7 +78,7 @@ export default function IDE() {
       setOutput(res.data.output);
     } catch (err) {
       console.error("API Error:", err);
-      setOutput(`Error connecting to ${activeApi}\n${err.message}`);
+      setOutput(`Error connecting to server.\nPossible causes:\n1. Server is waking up (wait 50s)\n2. URL is wrong\n\nDetails: ${err.message}`);
     } finally {
       setIsRunning(false);
     }
@@ -110,12 +105,12 @@ export default function IDE() {
             onChange={(e) => setLanguage(e.target.value)}
             className="bg-[#0d1117] border border-[#30363d] text-white rounded px-3 py-1 outline-none focus:border-green-500"
           >
+            <option value="java">Java</option>
+            <option value="bash">Bash</option>
             <option value="python">Python</option>
             <option value="javascript">JavaScript (Node)</option>
             <option value="cpp">C++ (GCC)</option>
             <option value="c">C (GCC)</option>
-            <option value="java">Java</option>
-            <option value="bash">Bash</option>
           </select>
         </div>
 
