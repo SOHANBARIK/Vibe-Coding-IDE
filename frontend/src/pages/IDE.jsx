@@ -12,12 +12,15 @@ export default function IDE() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
 
+  const API_JAVA_BASH = import.meta.env.API_JAVA_BASH;
+  const API_GENERAL = import.meta.env.API_GENERAL;
+
   // --- CRITICAL FIX: Defined URLs directly inside the component ---
   const getApiEndpoint = () => {
     if (language === "java" || language === "bash") {
-      return "https://vibe-coding-ide-1.onrender.com"; // Java & Bash Server
+      return API_JAVA_BASH; // Java & Bash Server
     }
-    return "https://vibe-coding-ide.onrender.com"; // Python, C, C++ Server
+    return API_GENERAL; // Python, C, C++ Server
   };
 
   // Set boilerplate code when language changes
