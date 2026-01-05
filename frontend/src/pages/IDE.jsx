@@ -101,7 +101,7 @@ export default function IDE() {
         {/* SIDEBAR */}
         <div className="app-sidebar" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <div className="text-sm font-bold text-gray-400 mb-2 uppercase tracking-wider">
-            AI Architect
+            AI Architect          
           </div>
           
           <textarea 
@@ -156,6 +156,16 @@ export default function IDE() {
               </>
             )}
           </button>
+          <div style={{ marginTop: 'auto', paddingTop: '20px', borderTop: '1px solid #30363d' }}>
+            <div className="flex items-center gap-2 text-gray-400 text-xs">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+              <span>Online Compiler</span>
+            </div>
+            <div className="text-gray-500 text-xs mt-1 font-mono">
+              Created by <span className="text-indigo-400 font-bold">Sohan</span>
+            </div>
+          </div>
+
         </div>
 
         <div className="workspace">
@@ -176,6 +186,6 @@ export default function IDE() {
           </div>
         </div>
       </div>
-    </div>
+     </div>
   );
 }
