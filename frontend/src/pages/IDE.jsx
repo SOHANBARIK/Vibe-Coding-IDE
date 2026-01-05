@@ -1,13 +1,14 @@
-
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Editor from "@monaco-editor/react";
 import { Play, Loader2, Code2, Terminal as TerminalIcon, Sparkles } from 'lucide-react';
 
-// const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
-const API_BASE = import.meta.env.VITE_API_URL || "";
+// --- CONFIGURATION ---
+// 1. Server for Java & Bash
+const API_JAVA_BASH = import.meta.env.API_JAVA_BASH;
 
-
+// 2. Server for Python, C, C++ (and others)
+const API_GENERAL = import.meta.env.API_GENERAL;
 
 export default function IDE() {
   const [code, setCode] = useState(`print("Hello World")`);
@@ -15,9 +16,16 @@ export default function IDE() {
   const [language, setLanguage] = useState("python");
   const [prompt, setPrompt] = useState("");
   
-  // FIX: Split loading into two separate states
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
+
+  // Helper function to get the correct API URL based on language
+  const getApiEndpoint = () => {
+    if (language === "java" || language === "bash") {
+      return API_JAVA_BASH;
+    }
+    return API_GENERAL;
+  };
 
   // Set boilerplate code when language changes
   useEffect(() => {
@@ -26,7 +34,8 @@ export default function IDE() {
       javascript: 'console.log("Hello World");',
       cpp: '#include <iostream>\n\nint main() {\n    std::cout << "Hello C++";\n    return 0;\n}',
       c: '#include <stdio.h>\n\nint main() {\n    printf("Hello C\\n");\n    return 0;\n}',
-      bash: 'echo "Hello Bash"' // Added bash to match your select options
+      java: 'public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello Java");\n    }\n}',
+      bash: 'echo "Hello Bash"'
     };
     
     // Only set code if a boilerplate exists for the selected language
@@ -38,11 +47,13 @@ export default function IDE() {
   // 1. AI Generation Handler
   const handleGenerate = async () => {
     if (!prompt) return;
-    setIsGenerating(true); // Only lock the AI button
+    setIsGenerating(true);
     setOutput(`> Initializing Vibe Agent for ${language}...`);
     
+    const activeApi = getApiEndpoint(); // Select the correct server
+
     try {
-      const res = await axios.post(`${API_BASE}/generate`, {
+      const res = await axios.post(`${activeApi}/generate`, {
         prompt: prompt,
         user_id: "user",
         language: language
@@ -51,7 +62,8 @@ export default function IDE() {
       setCode(res.data.final_code);
       setOutput(res.data.status === "success" ? res.data.output : `ERROR:\n${res.data.output}`);
     } catch (err) {
-      setOutput(`Error: ${err.message}`);
+      console.error("API Error:", err);
+      setOutput(`Error connecting to ${activeApi}\n${err.message}`);
     } finally {
       setIsGenerating(false);
     }
@@ -59,16 +71,20 @@ export default function IDE() {
 
   // 2. Manual Run Handler
   const handleRun = async () => {
-    setIsRunning(true); // Only lock the Run button
+    setIsRunning(true);
     setOutput(`> Compiling ${language}...`);
+    
+    const activeApi = getApiEndpoint(); // Select the correct server
+
     try {
-      const res = await axios.post(`${API_BASE}/execute`, {
+      const res = await axios.post(`${activeApi}/execute`, {
         code: code,
         language: language
       });
       setOutput(res.data.output);
     } catch (err) {
-      setOutput(`Error: ${err.message}`);
+      console.error("API Error:", err);
+      setOutput(`Error connecting to ${activeApi}\n${err.message}`);
     } finally {
       setIsRunning(false);
     }
@@ -99,11 +115,12 @@ export default function IDE() {
             <option value="javascript">JavaScript (Node)</option>
             <option value="cpp">C++ (GCC)</option>
             <option value="c">C (GCC)</option>
-            {/* <option value="bash">Bash</option> */}
+            <option value="java">Java</option>
+            <option value="bash">Bash</option>
           </select>
         </div>
 
-        {/* RUN BUTTON (Only checks isRunning) */}
+        {/* RUN BUTTON */}
         <button 
           className="btn-primary" 
           onClick={handleRun} 
@@ -141,7 +158,7 @@ export default function IDE() {
             onChange={(e) => setPrompt(e.target.value)}
           />
 
-          {/* VIBE BUTTON (Only checks isGenerating) */}
+          {/* VIBE BUTTON */}
           <button 
             onClick={handleGenerate}
             disabled={isGenerating}
