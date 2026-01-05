@@ -1,26 +1,24 @@
-# Force standard Intel/AMD architecture
-FROM ubuntu:22.04
+# 1. Use the slim Python image (lightweight)
+FROM python:3.11-slim
 
-ENV DEBIAN_FRONTEND=noninteractive
+# 2. Set working directory
+WORKDIR /app
 
-# 1. Update & Install Python + C++ (Lightweight)
+# 3. INSTALL COMPILERS (The Critical Step)
+# We add gcc, g++, and nodejs so the server can compile code locally
 RUN apt-get update && apt-get install -y \
-    python3 \
+    gcc \
     g++ \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-# 2. Install Node.js & NPM (Medium)
-RUN apt-get update && apt-get install -y \
     nodejs \
     npm \
     && rm -rf /var/lib/apt/lists/*
 
-# 3. Install Java (Heavy - doing this separately prevents crashes)
-RUN apt-get update && apt-get install -y \
-    default-jdk \
-    && rm -rf /var/lib/apt/lists/*
+# 4. Copy requirements and install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# 4. Setup
-RUN ln -s /usr/bin/python3 /usr/bin/python
-WORKDIR /sandbox
+# 5. Copy the rest of the code
+COPY . .
+
+# 6. Run the server
+CMD ["uvicorn", "backend.src.api.server:app", "--host", "0.0.0.0", "--port", "8000"]

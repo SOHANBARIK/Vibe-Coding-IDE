@@ -1,27 +1,28 @@
-import uuid  # <--- ADDED THIS IMPORT
+import uuid
 import uvicorn
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from langchain_core.messages import HumanMessage # <--- ADDED THIS IMPORT
-
-from src.api.models import CodeRequest, CodeResponse
-from src.agent.graph import app as agent_app # Imported as 'agent_app'
-from src.config.settings import settings
-from pydantic import BaseModel
-from src.sandbox.docker_manager import execute_in_sandbox
-
-from fastapi.staticfiles import StaticFiles
+import sys
+import subprocess
 import os
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from langchain_core.messages import HumanMessage
+from pydantic import BaseModel
 
+# Project Imports
+from src.api.models import CodeRequest, CodeResponse
+from src.agent.graph import app as agent_app
+from src.config.settings import settings
+
+# --- CONFIGURATION ---
 frontend_path = os.path.join(os.path.dirname(__file__), "../../../frontend/dist")
+IS_RENDER = os.getenv('RENDER')
 
-# Define the Request Model
 class ExecuteRequest(BaseModel):
     code: str
     language: str = "python"
 
-# Initialize FastAPI app
-app = FastAPI(title="Coding Agent")
+app = FastAPI(title="Vibe Coder API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -31,57 +32,83 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
-# @app.get("/")
-# async def root():
-#     return {"message": "Welcome to the Coding Agent API"}
+def execute_unsafe_local(code: str, language: str):
+    file_id = str(uuid.uuid4())
+    output = ""
+    command = []
+    
+    try:
+        if language == "python":
+            filename = f"{file_id}.py"
+            with open(filename, "w") as f: f.write(code)
+            command = [sys.executable, filename]
+
+        elif language == "javascript":
+            filename = f"{file_id}.js"
+            with open(filename, "w") as f: f.write(code)
+            command = ["node", filename]
+
+        elif language == "cpp":
+            filename = f"{file_id}.cpp"
+            with open(filename, "w") as f: f.write(code)
+            subprocess.run(["g++", filename, "-o", file_id], check=True, capture_output=True, text=True)
+            command = [f"./{file_id}"]
+
+        elif language == "c":
+            filename = f"{file_id}.c"
+            with open(filename, "w") as f: f.write(code)
+            subprocess.run(["gcc", filename, "-o", file_id], check=True, capture_output=True, text=True)
+            command = [f"./{file_id}"]
+            
+        else:
+            return f"Language '{language}' not supported locally."
+
+        result = subprocess.run(command, capture_output=True, text=True, timeout=5)
+        output = result.stdout + result.stderr
+
+    except subprocess.CalledProcessError as e:
+        output = f"Compilation Error:\n{e.stderr}"
+    except Exception as e:
+        output = f"Runtime Error: {str(e)}"
+    finally:
+        for ext in [".py", ".js", ".cpp", ".c", ""]:
+            path = f"{file_id}{ext}"
+            if os.path.exists(path): os.remove(path)
+                
+    return output
 
 @app.post("/generate", response_model=CodeResponse)
 async def generate_code(payload: CodeRequest):
-    req_id = str(uuid.uuid4()) # <--- Now works because uuid is imported
-    
-    # 1. INITIALIZE STATE WITH LANGUAGE
     initial_state = {
-        "messages": [HumanMessage(content=payload.prompt)], # <--- Now works
+        "messages": [HumanMessage(content=payload.prompt)],
         "language": payload.language,
         "user_id": payload.user_id
     }
-    
-    # 2. RUN THE GRAPH
     try:
-        # FIXED: Changed 'app_graph' to 'agent_app' to match your import above
         result = agent_app.invoke(initial_state)
-        
-        # 3. RETURN RESULT
         return {
             "final_code": result["final_code"],
-            "output": "Code Generated Successfully. Click 'Run' to execute.",
+            "output": "Code Generated Successfully.",
             "status": "success"
         }
     except Exception as e:
-        return {
-            "final_code": "",
-            "output": str(e),
-            "status": "error"
-        }
-    
+        return {"final_code": "", "output": str(e), "status": "error"}
+
 @app.post("/execute")
 async def execute_code_endpoint(payload: ExecuteRequest):
     try:
-        output = execute_in_sandbox(payload.code, payload.language)
+        # Use local compilers on Render, Docker on Localhost
+        if IS_RENDER:
+            output = execute_unsafe_local(payload.code, payload.language)
+        else:
+            from src.sandbox.docker_manager import execute_in_sandbox
+            output = execute_in_sandbox(payload.code, payload.language)
         return {"output": output, "status": "success"}
     except Exception as e:
         return {"output": str(e), "status": "error"}
-    
-    
-# frontend_path = os.path.join(os.path.dirname(__file__), "../../../frontend/dist")
 
 if os.path.exists(frontend_path):
     app.mount("/", StaticFiles(directory=frontend_path, html=True), name="static")
-else:
-    print("WARNING: Frontend build not found. Did you run 'npm run build'?")
 
 if __name__ == "__main__":
-    uvicorn.run(app, host=settings.API_HOST, port=settings.API_PORT)
-
-# if __name__ == "__main__":
-#     uvicorn.run(app, host=settings.API_HOST, port=settings.API_PORT)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
