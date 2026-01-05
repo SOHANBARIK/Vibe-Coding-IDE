@@ -1,15 +1,21 @@
+
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Editor from "@monaco-editor/react";
 import { Play, Loader2, Code2, Terminal as TerminalIcon, Sparkles } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_API_URL?.replace(/\/$/, "") || "";
+// const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API_BASE = import.meta.env.VITE_API_URL || "";
+
+
 
 export default function IDE() {
+  const [code, setCode] = useState(`print("Hello World")`);
+  const [output, setOutput] = useState("> Ready to compile...");
   const [language, setLanguage] = useState("python");
-  const [code, setCode] = useState("");
-  const [output, setOutput] = useState("> Ready...");
   const [prompt, setPrompt] = useState("");
+  
+  // FIX: Split loading into two separate states
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
 
@@ -20,87 +26,184 @@ export default function IDE() {
       javascript: 'console.log("Hello World");',
       cpp: '#include <iostream>\n\nint main() {\n    std::cout << "Hello C++";\n    return 0;\n}',
       c: '#include <stdio.h>\n\nint main() {\n    printf("Hello C\\n");\n    return 0;\n}',
+      bash: 'echo "Hello Bash"' // Added bash to match your select options
     };
-    setCode(boilerplates[language] || "");
+    
+    // Only set code if a boilerplate exists for the selected language
+    if (boilerplates[language]) {
+        setCode(boilerplates[language]);
+    }
   }, [language]);
 
+  // 1. AI Generation Handler
   const handleGenerate = async () => {
     if (!prompt) return;
-    setIsGenerating(true);
+    setIsGenerating(true); // Only lock the AI button
+    setOutput(`> Initializing Vibe Agent for ${language}...`);
+    
     try {
       const res = await axios.post(`${API_BASE}/generate`, {
-        prompt, user_id: "user", language
+        prompt: prompt,
+        user_id: "user",
+        language: language
       });
+      
       setCode(res.data.final_code);
-      setOutput("AI: Code generated successfully.");
+      setOutput(res.data.status === "success" ? res.data.output : `ERROR:\n${res.data.output}`);
     } catch (err) {
       setOutput(`Error: ${err.message}`);
-    } finally { setIsGenerating(false); }
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
+  // 2. Manual Run Handler
   const handleRun = async () => {
-    setIsRunning(true);
+    setIsRunning(true); // Only lock the Run button
+    setOutput(`> Compiling ${language}...`);
     try {
-      const res = await axios.post(`${API_BASE}/execute`, { code, language });
+      const res = await axios.post(`${API_BASE}/execute`, {
+        code: code,
+        language: language
+      });
       setOutput(res.data.output);
     } catch (err) {
       setOutput(`Error: ${err.message}`);
-    } finally { setIsRunning(false); }
+    } finally {
+      setIsRunning(false);
+    }
   };
 
   return (
-    <div className="flex flex-col h-screen w-full bg-[#0d1117] text-white">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-[#30363d] bg-[#161b22]">
+    <div className="flex-col h-full w-full">
+      
+      {/* HEADER */}
+      <div className="app-header">
         <div className="flex items-center gap-4">
-          <span className="font-bold text-xl text-indigo-400">Vibe Coder</span>
+          <div className="flex items-center gap-2 font-bold text-xl">
+             <div style={{ background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)', padding: '4px', borderRadius: '6px' }}>
+                  <Code2 size={20} className="text-white" />
+                </div>
+
+                <span className="text-transparent bg-clip-text bg-gradient-to-r ...">
+                  Vibe Code IDE
+                </span>
+          </div>
+          
           <select 
-            value={language} 
+            value={language}
             onChange={(e) => setLanguage(e.target.value)}
-            className="bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 outline-none"
+            className="bg-[#0d1117] border border-[#30363d] text-white rounded px-3 py-1 outline-none focus:border-green-500"
           >
             <option value="python">Python</option>
-            <option value="javascript">JavaScript</option>
-            <option value="c">C</option>
-            <option value="cpp">C++</option>
+            <option value="javascript">JavaScript (Node)</option>
+            <option value="cpp">C++ (GCC)</option>
+            <option value="c">C (GCC)</option>
+            <option value="bash">Bash</option>
           </select>
         </div>
-        <button onClick={handleRun} disabled={isRunning} className="flex items-center gap-2 bg-green-600 hover:bg-green-700 px-4 py-1.5 rounded font-bold transition">
-          {isRunning ? <Loader2 className="animate-spin" size={16}/> : <Play size={16} />} Run
+
+        {/* RUN BUTTON (Only checks isRunning) */}
+        <button 
+          className="btn-primary" 
+          onClick={handleRun} 
+          disabled={isRunning}
+        >
+           {isRunning ? <Loader2 className="animate-spin" size={16}/> : <Play size={16} />}
+           Run Code
         </button>
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <div className="w-80 border-r border-[#30363d] p-4 flex flex-col gap-4">
-          <label className="text-xs font-bold text-gray-500 uppercase">AI Architect</label>
+      <div className="main-layout">
+        
+        {/* SIDEBAR */}
+        <div className="app-sidebar" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div className="text-sm font-bold text-gray-400 mb-2 uppercase tracking-wider">
+            AI Architect          
+          </div>
+          
           <textarea 
-            className="flex-1 bg-[#0d1117] border border-[#30363d] p-3 rounded text-sm outline-none focus:border-indigo-500"
-            placeholder="Describe your code..."
+            className="prompt-input"
+            style={{ 
+              flex: 1, 
+              minHeight: '150px', 
+              resize: 'none',
+              backgroundColor: '#0d1117',
+              border: '1px solid #30363d',
+              color: '#e6edf3',
+              padding: '12px',
+              borderRadius: '8px',
+              outline: 'none',
+              fontFamily: 'inherit'
+            }}
+            placeholder="Describe what you want to build..."
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
           />
-          <button onClick={handleGenerate} disabled={isGenerating} className="w-full py-3 rounded font-bold flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:opacity-90">
-            {isGenerating ? <Loader2 className="animate-spin" size={18} /> : <Sparkles size={18} />} Generate
+
+          {/* VIBE BUTTON (Only checks isGenerating) */}
+          <button 
+            onClick={handleGenerate}
+            disabled={isGenerating}
+            style={{
+              background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+              color: 'white',
+              border: 'none',
+              padding: '12px',
+              borderRadius: '8px',
+              fontWeight: 'bold',
+              cursor: isGenerating ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              transition: 'opacity 0.2s',
+              opacity: isGenerating ? 0.7 : 1,
+              boxShadow: '0 4px 14px 0 rgba(168, 85, 247, 0.39)'
+            }}
+          >
+            {isGenerating ? (
+              <>
+                <Loader2 className="animate-spin" size={18} /> 
+                Thinking...
+              </>
+            ) : (
+              <>
+                <Sparkles size={18} /> 
+                Generate
+              </>
+            )}
           </button>
-          <div className="mt-auto pt-4 border-t border-[#30363d] text-[10px] text-gray-500">
-             Created by <span className="text-indigo-400">Sohan</span>
+          <div style={{ marginTop: 'auto', paddingTop: '20px', borderTop: '1px solid #30363d' }}>
+            <div className="flex items-center gap-2 text-gray-400 text-xs">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+              <span>Online Compiler</span>
+            </div>
+            <div className="text-gray-500 text-xs mt-1 font-mono">
+              Created by <span className="text-indigo-400 font-bold">Sohan</span>
+            </div>
           </div>
+
         </div>
 
-        {/* Editor & Terminal */}
-        <div className="flex-1 flex flex-col">
-          <div className="flex-1">
-            <Editor height="100%" language={language} theme="vs-dark" value={code} onChange={setCode} />
+        <div className="workspace">
+          <div className="editor-container">
+            <Editor
+              height="100%"
+              defaultLanguage={language}
+              language={language}
+              theme="vs-dark"
+              value={code}
+              onChange={setCode}
+              options={{ fontSize: 14, minimap: { enabled: false } }}
+            />
           </div>
-          <div className="h-48 border-t border-[#30363d] bg-[#010409] p-4 font-mono text-sm overflow-y-auto">
-            <div className="text-gray-500 mb-2 border-b border-[#30363d] pb-1 flex items-center gap-2">
-              <TerminalIcon size={14}/> Terminal
-            </div>
-            <pre className="whitespace-pre-wrap">{output}</pre>
+          <div className="terminal">
+            <div className="terminal-header"><TerminalIcon size={14}/> Terminal</div>
+            <div className="terminal-output">{output}</div>
           </div>
         </div>
       </div>
-    </div>
+     </div>
   );
 }
