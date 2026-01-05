@@ -13,6 +13,8 @@ from src.sandbox.docker_manager import execute_in_sandbox
 from fastapi.staticfiles import StaticFiles
 import os
 
+frontend_path = os.path.join(os.path.dirname(__file__), "../../../frontend/dist")
+
 # Define the Request Model
 class ExecuteRequest(BaseModel):
     code: str
@@ -29,9 +31,9 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
-@app.get("/")
-async def root():
-    return {"message": "Welcome to the Coding Agent API"}
+# @app.get("/")
+# async def root():
+#     return {"message": "Welcome to the Coding Agent API"}
 
 @app.post("/generate", response_model=CodeResponse)
 async def generate_code(payload: CodeRequest):
@@ -71,7 +73,7 @@ async def execute_code_endpoint(payload: ExecuteRequest):
         return {"output": str(e), "status": "error"}
     
     
-frontend_path = os.path.join(os.path.dirname(__file__), "../../../frontend/dist")
+# frontend_path = os.path.join(os.path.dirname(__file__), "../../../frontend/dist")
 
 if os.path.exists(frontend_path):
     app.mount("/", StaticFiles(directory=frontend_path, html=True), name="static")
@@ -81,5 +83,5 @@ else:
 if __name__ == "__main__":
     uvicorn.run(app, host=settings.API_HOST, port=settings.API_PORT)
 
-if __name__ == "__main__":
-    uvicorn.run(app, host=settings.API_HOST, port=settings.API_PORT)
+# if __name__ == "__main__":
+#     uvicorn.run(app, host=settings.API_HOST, port=settings.API_PORT)
