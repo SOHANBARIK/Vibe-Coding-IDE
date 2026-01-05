@@ -12,8 +12,8 @@ export default function IDE() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
 
-  const API_JAVA_BASH = import.meta.env.API_JAVA_BASH;
-  const API_GENERAL = import.meta.env.API_GENERAL;
+  const API_JAVA_BASH = import.meta.env.VITE_API_JAVA_BASH;
+  const API_GENERAL = import.meta.env.VITE_API_GENERAL;
 
   // --- CRITICAL FIX: Defined URLs directly inside the component ---
   const getApiEndpoint = () => {
