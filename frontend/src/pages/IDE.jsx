@@ -3,6 +3,10 @@ import axios from 'axios';
 import Editor from "@monaco-editor/react";
 import { Play, Loader2, Code2, Terminal as TerminalIcon, Sparkles } from 'lucide-react';
 
+// const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API_BASE = import.meta.env.VITE_API_URL || "";
+
+
 export default function IDE() {
   const [code, setCode] = useState(`print("Hello World")`);
   const [output, setOutput] = useState("> Ready to compile...");
@@ -20,7 +24,7 @@ export default function IDE() {
     setOutput(`> Initializing Vibe Agent for ${language}...`);
     
     try {
-      const res = await axios.post("http://localhost:8000/generate", {
+      const res = await axios.post(`${API_BASE}/generate`, {
         prompt: prompt,
         user_id: "user",
         language: language
@@ -40,7 +44,7 @@ export default function IDE() {
     setIsRunning(true); // Only lock the Run button
     setOutput(`> Compiling ${language}...`);
     try {
-      const res = await axios.post("http://localhost:8000/execute", {
+      const res = await axios.post(`${API_BASE}/execute`, {
         code: code,
         language: language
       });
@@ -60,11 +64,12 @@ export default function IDE() {
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 font-bold text-xl">
              <div style={{ background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)', padding: '4px', borderRadius: '6px' }}>
-                <Code2 size={20} className="text-white" />
-             </div>
-             <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">
-               Vibe Coder
-             </span>
+                  <Code2 size={20} className="text-white" />
+                </div>
+
+                <span className="text-transparent bg-clip-text bg-gradient-to-r ...">
+                  Vibe Coder
+                </span>
           </div>
           
           <select 
