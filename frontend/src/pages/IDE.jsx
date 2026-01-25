@@ -47,7 +47,7 @@ export default function IDE() {
     
     // Get the correct URL for the current language
     const activeApi = getApiEndpoint(); 
-    setOutput(`> Initializing Vibe Agent for ${language} `);
+    setOutput(`> Initializing Vibe Agent for ${language}...\n> Generating code based on prompt...\n`);
     // on ${activeApi}...`);
     
     try {
