@@ -47,7 +47,8 @@ export default function IDE() {
     
     // Get the correct URL for the current language
     const activeApi = getApiEndpoint(); 
-    setOutput(`> Initializing Vibe Agent for ${language} on ${activeApi}...`);
+    setOutput(`> Initializing Vibe Agent for ${language} `);
+    // on ${activeApi}...`);
     
     try {
       const res = await axios.post(`${activeApi}/generate`, {
