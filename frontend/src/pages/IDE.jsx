@@ -21,7 +21,7 @@ export default function IDE() {
   const handleGenerate = async () => {
     if (!prompt) return;
     setIsGenerating(true); // Only lock the AI button
-    setOutput(`> Initializing Vibe Agent for ${language}...`);
+    setOutput(`> Initializing Vibe Agent for ${language}...\n> Generating code based on prompt...\n`);
     
     try {
       const res = await axios.post(`${API_BASE}/generate`, {
